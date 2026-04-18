@@ -1,28 +1,13 @@
-import axios from "axios";
+import axios from 'axios';
 
-export const api = axios.create({
-  // Use '/webhook-test' if clicking the orange button manually.
-  // Use '/webhook' if the workflows are Activated in the background.
-  baseURL: 'http://localhost:5678/webhook-test', 
-});
+const baseURL = import.meta.env.VITE_N8N_BASE_URL || 'http://localhost:5678/webhook-test';
+
+export const api = axios.create({ baseURL });
+
 api.interceptors.response.use(
   (res) => res.data,
   (err) => {
-    console.error('--- Axios Network Error Debug ---');
-    console.error('Full Error Object:', err);
-    if (err.response) {
-      console.error('Response Data:', err.response.data);
-      console.error('Response Status:', err.response.status);
-      console.error('Response Headers:', err.response.headers);
-    } else if (err.request) {
-      console.error('Request Object (No response received):', err.request);
-      console.error('This usually means the server is down, unreachable, or CORS is blocking the request.');
-    } else {
-      console.error('Error Message:', err.message);
-    }
-    console.error('Config:', err.config);
-    console.error('---------------------------------');
-
+    console.error('API Error:', err.response?.data || err.message);
     const message = err.response?.data?.message || err.message || 'Request failed';
     return Promise.reject(message);
   }
