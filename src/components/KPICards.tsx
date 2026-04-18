@@ -1,52 +1,47 @@
 import React from 'react';
-import { Card, CardContent } from '@/src/components/ui/Card';
-import { FileText, HelpCircle, Layers, AlertTriangle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { FileText, HelpCircle, TrendingUp, AlertTriangle } from 'lucide-react';
 
 interface KPICardsProps {
-  data: {
-    total_papers_analyzed: number;
-    total_questions_extracted: number;
-    unique_question_groups: number;
-    high_risk_questions: number;
-  } | null;
+  totalPapers: number;
+  totalQuestions: number;
+  avgMarks: number;
+  highRisk: number;
   isLoading: boolean;
 }
 
-export default function KPICards({ data, isLoading }: KPICardsProps) {
-  const kpis = [
-    { title: 'Papers Analyzed', value: data?.total_papers_analyzed, icon: FileText, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { title: 'Questions Extracted', value: data?.total_questions_extracted, icon: HelpCircle, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-    { title: 'Unique Groups', value: data?.unique_question_groups, icon: Layers, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { title: 'High Risk Questions', value: data?.high_risk_questions, icon: AlertTriangle, color: 'text-rose-400', bg: 'bg-rose-500/10' },
-  ];
+const KPIS = [
+  { key: 'totalPapers', label: 'Papers Analyzed', icon: FileText, color: '#38bdf8', colorDim: 'rgba(56,189,248,0.1)', colorBorder: 'rgba(56,189,248,0.2)' },
+  { key: 'totalQuestions', label: 'Questions Extracted', icon: HelpCircle, color: '#e8b86d', colorDim: 'rgba(232,184,109,0.1)', colorBorder: 'rgba(232,184,109,0.2)' },
+  { key: 'avgMarks', label: 'Avg Marks / Question', icon: TrendingUp, color: '#4ecdc4', colorDim: 'rgba(78,205,196,0.1)', colorBorder: 'rgba(78,205,196,0.2)' },
+  { key: 'highRisk', label: 'Repeated Questions', icon: AlertTriangle, color: '#f87171', colorDim: 'rgba(248,113,113,0.1)', colorBorder: 'rgba(248,113,113,0.2)' },
+];
+
+export default function KPICards({ totalPapers, totalQuestions, avgMarks, highRisk, isLoading }: KPICardsProps) {
+  const values: Record<string, number> = { totalPapers, totalQuestions, avgMarks, highRisk };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {kpis.map((kpi, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.1 }}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+      {KPIS.map((kpi, i) => (
+        <div
+          key={kpi.key}
+          className={`fade-up-${i + 1}`}
+          style={{ background: 'var(--ink-2)', border: `1px solid ${kpi.colorBorder}`, borderRadius: 14, padding: '20px 22px', position: 'relative', overflow: 'hidden' }}
         >
-          <Card className="relative overflow-hidden group hover:border-white/20 transition-colors">
-            <CardContent className="p-6 flex items-center space-x-4">
-              <div className={`p-3 rounded-xl ${kpi.bg}`}>
-                <kpi.icon className={`w-6 h-6 ${kpi.color}`} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-400">{kpi.title}</p>
-                {isLoading ? (
-                  <div className="h-8 w-16 bg-white/10 animate-pulse rounded mt-1" />
-                ) : (
-                  <h3 className="text-2xl font-bold text-white mt-1">{kpi.value ?? '-'}</h3>
-                )}
-              </div>
-              <div className={`absolute -bottom-4 -right-4 w-24 h-24 rounded-full ${kpi.bg} blur-2xl opacity-50 group-hover:opacity-100 transition-opacity`} />
-            </CardContent>
-          </Card>
-        </motion.div>
+          <div style={{ position: 'absolute', top: 0, right: 0, width: 80, height: 80, background: `radial-gradient(circle at top right, ${kpi.colorDim}, transparent 70%)`, pointerEvents: 'none' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ width: 32, height: 32, background: kpi.colorDim, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${kpi.colorBorder}` }}>
+              <kpi.icon size={15} color={kpi.color} />
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500 }}>{kpi.label}</span>
+          </div>
+          {isLoading ? (
+            <div className="skeleton" style={{ height: 32, width: 80 }} />
+          ) : (
+            <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-display)', color: kpi.color, lineHeight: 1 }}>
+              {values[kpi.key] ?? '—'}
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );
