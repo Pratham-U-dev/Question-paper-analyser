@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/Card';
 import { generatePaper } from '@/src/api/endpoints';
 import { useAppContext } from '@/src/context/AppContext';
-import { mockGeneratedPaper } from '@/src/lib/mockData';
 import { Loader2, Settings, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function PaperGenerator() {
-  const { subjectCode, isMockMode } = useAppContext();
+  const { subjectCode } = useAppContext();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPaper, setGeneratedPaper] = useState<any>(null);
 
@@ -35,15 +34,6 @@ export default function PaperGenerator() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     setGeneratedPaper(null);
-
-    if (isMockMode) {
-      setTimeout(() => {
-        setGeneratedPaper(mockGeneratedPaper);
-        setIsGenerating(false);
-        toast.success('Paper generated successfully (Mock Mode)!');
-      }, 1000);
-      return;
-    }
 
     const payload = {
       subject_code: subjectCode,

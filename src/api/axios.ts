@@ -1,9 +1,10 @@
-import axios from 'axios';
+import axios from "axios";
 
 export const api = axios.create({
-  baseURL: 'http://localhost:5678',
+  // Use '/webhook-test' if clicking the orange button manually.
+  // Use '/webhook' if the workflows are Activated in the background.
+  baseURL: 'http://localhost:5678/webhook-test', 
 });
-
 api.interceptors.response.use(
   (res) => res.data,
   (err) => {

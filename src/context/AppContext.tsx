@@ -7,8 +7,6 @@ interface AppContextType {
   setRole: (role: Role) => void;
   subjectCode: string;
   setSubjectCode: (code: string) => void;
-  isMockMode: boolean;
-  setIsMockMode: (val: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -19,7 +17,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (saved as Role) || null;
   });
   const [subjectCode, setSubjectCode] = useState<string>('21CS61'); // Default subject
-  const [isMockMode, setIsMockMode] = useState<boolean>(false);
 
   const setRole = (newRole: Role) => {
     setRoleState(newRole);
@@ -31,7 +28,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   return (
-    <AppContext.Provider value={{ role, setRole, subjectCode, setSubjectCode, isMockMode, setIsMockMode }}>
+    <AppContext.Provider value={{ role, setRole, subjectCode, setSubjectCode }}>
       {children}
     </AppContext.Provider>
   );

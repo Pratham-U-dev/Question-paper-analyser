@@ -1,7 +1,8 @@
 import { api } from './axios';
 
+// Remove the hardcoded localhost link from here
 export const uploadPaper = (formData: FormData): Promise<any> => {
-  return api.post('/webhook-test/papers/upload', formData, {
+  return api.post('/papers/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };

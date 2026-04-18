@@ -9,11 +9,10 @@ import WordCloudChart from '@/src/components/charts/WordCloudChart';
 import QuestionBank from '@/src/components/QuestionBank';
 import PaperGenerator from '@/src/components/PaperGenerator';
 import { getAnalyticsSummary, getAnalyticsFrequency, getAnalyticsBlooms, getAnalyticsHeatmap, getAnalyticsWordcloud } from '@/src/api/endpoints';
-import { mockSummary, mockFrequency, mockBlooms, mockHeatmap, mockWordcloud } from '@/src/lib/mockData';
 import { motion } from 'framer-motion';
 
 export default function LecturerDashboard() {
-  const { subjectCode, setSubjectCode, isMockMode } = useAppContext();
+  const { subjectCode, setSubjectCode } = useAppContext();
   const [data, setData] = useState({
     summary: null,
     frequency: null,
@@ -25,18 +24,6 @@ export default function LecturerDashboard() {
 
   const fetchData = async () => {
     setIsLoading(true);
-    
-    if (isMockMode) {
-      setData({
-        summary: mockSummary as any,
-        frequency: mockFrequency as any,
-        blooms: mockBlooms as any,
-        heatmap: mockHeatmap as any,
-        wordcloud: mockWordcloud as any,
-      });
-      setIsLoading(false);
-      return;
-    }
 
     try {
       const [summary, frequency, blooms, heatmap, wordcloud] = await Promise.all([
@@ -62,7 +49,7 @@ export default function LecturerDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [subjectCode, isMockMode]);
+  }, [subjectCode]);
 
   return (
     <div className="space-y-6 pb-12">

@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { useAppContext } from '@/src/context/AppContext';
-import { LogOut, LayoutDashboard, FileText, Settings, Database } from 'lucide-react';
+import { LogOut, LayoutDashboard, FileText, Settings } from 'lucide-react';
 
 export default function Layout() {
-  const { role, setRole, isMockMode, setIsMockMode } = useAppContext();
+  const { role, setRole } = useAppContext();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -43,14 +43,6 @@ export default function Layout() {
         </nav>
 
         <div className="p-4 border-t border-white/10 space-y-2">
-          <button 
-            onClick={() => setIsMockMode(!isMockMode)}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isMockMode ? 'bg-emerald-500/10 text-emerald-400' : 'hover:bg-white/5 text-slate-400 hover:text-slate-200'}`}
-            title="Temporary feature to display charts without backend"
-          >
-            <Database className="w-5 h-5" />
-            <span>{isMockMode ? 'Mock Data Active' : 'Load Mock Data'}</span>
-          </button>
           <button 
             onClick={handleLogout}
             className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"

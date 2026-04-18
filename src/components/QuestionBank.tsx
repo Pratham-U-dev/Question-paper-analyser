@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/Card';
 import { getQuestions } from '@/src/api/endpoints';
 import { useAppContext } from '@/src/context/AppContext';
-import { mockQuestions } from '@/src/lib/mockData';
 import { Search, Filter, Loader2 } from 'lucide-react';
 
 export default function QuestionBank() {
-  const { subjectCode, isMockMode } = useAppContext();
+  const { subjectCode } = useAppContext();
   const [questions, setQuestions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -14,12 +13,6 @@ export default function QuestionBank() {
   useEffect(() => {
     const fetchQuestions = async () => {
       setIsLoading(true);
-      
-      if (isMockMode) {
-        setQuestions(mockQuestions);
-        setIsLoading(false);
-        return;
-      }
 
       try {
         const data = await getQuestions(subjectCode);
@@ -31,7 +24,7 @@ export default function QuestionBank() {
       }
     };
     fetchQuestions();
-  }, [subjectCode, isMockMode]);
+  }, [subjectCode]);
 
   const filtered = questions.filter(q => 
     q.question_text.toLowerCase().includes(search.toLowerCase())
