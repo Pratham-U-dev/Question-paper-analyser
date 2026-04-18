@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAppContext } from '@/src/context/AppContext';
 import { LayoutDashboard, BookOpen, Sparkles, LogOut, ChevronRight, Brain, Menu, X } from 'lucide-react';
+import { fetchUniqueSubjects } from '@/src/api/supabase';
 
 const BLOOM_LABELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
 
@@ -10,6 +11,21 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [subjects, setSubjects] = useState<{subject_code: string, subject_name: string}[]>([]);
+
+  useEffect(() => {
+    fetchUniqueSubjects()
+      .then(fetchedSubjects => {
+        if (fetchedSubjects.length > 0) {
+          setSubjects(fetchedSubjects);
+          // If current subject code isn't in DB, perhaps default to first available
+          if (!fetchedSubjects.find(s => s.subject_code === subjectCode)) {
+            setSubjectCode(fetchedSubjects[0].subject_code);
+          }
+        }
+      })
+      .catch(err => console.error('Failed to load subjects:', err));
+  }, []);
 
   const handleLogout = () => {
     setRole(null);
@@ -58,9 +74,15 @@ export default function Layout() {
               onChange={e => setSubjectCode(e.target.value)}
               style={{ width: '100%', background: 'transparent', color: 'var(--text-1)', fontSize: 12, fontWeight: 500, border: 'none', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
             >
-              <option value="21CS61" style={{ background: '#1a1e29' }}>21CS61 – Computer Networks</option>
-              <option value="21AIM601" style={{ background: '#1a1e29' }}>21AIM601 – Image Processing</option>
-              <option value="22CIV67" style={{ background: '#1a1e29' }}>22CIV67 – Env. Studies</option>
+              {subjects.length > 0 ? subjects.map((subj) => (
+                <option key={subj.subject_code} value={subj.subject_code} style={{ background: '#1a1e29' }}>
+                  {subj.subject_name.length > 25 
+                    ? `${subj.subject_code} - ${subj.subject_name.substring(0, 22)}...` 
+                    : `${subj.subject_code} - ${subj.subject_name}`}
+                </option>
+              )) : (
+                <option value={subjectCode} style={{ background: '#1a1e29' }}>Loading / Empty database...</option>
+              )}
             </select>
           </div>
         </div>

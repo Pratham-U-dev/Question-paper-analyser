@@ -5,6 +5,12 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 async function supabaseFetch(path: string, options?: RequestInit) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('--- Supabase Auth Error ---');
+    console.error('VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing from environment variables.');
+    throw new Error('Supabase environment variables are missing');
+  }
+
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
     ...options,
     headers: {
@@ -16,10 +22,21 @@ async function supabaseFetch(path: string, options?: RequestInit) {
     },
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err);
+    const errText = await res.text();
+    console.error(`Supabase Fetch Error [${res.status}]:`, errText);
+    throw new Error(`Supabase Error ${res.status}: ${res.statusText}`);
   }
-  return res.json();
+  
+  const data = await res.json();
+  console.log(`Supabase Fetch Success [${path}]:`, data.length, 'rows returned.');
+  
+  if (data.length === 0) {
+    console.warn(`Supabase returned 0 rows for ${path}. Possible reasons:`);
+    console.warn('1. The subject code does not match any records (case-sensitive).');
+    console.warn('2. Row Level Security (RLS) is enabled on the table but there is no policy allowing "anon" / public reads.');
+  }
+
+  return data;
 }
 
 export interface Paper {
@@ -73,6 +90,22 @@ export async function fetchQuestionsWithPaper(subjectCode: string): Promise<Ques
   return supabaseFetch(
     `/questions?subject_code=eq.${encodeURIComponent(subjectCode)}&select=*,paper:paper_id(*)&order=part.asc,module.asc,q_no.asc&limit=500`
   );
+}
+
+export async function fetchUniqueSubjects(): Promise<{ subject_code: string; subject_name: string }[]> {
+  const data = await supabaseFetch('/papers?select=subject_code,subject_name');
+  
+  // Deduplicate
+  const map = new Map<string, string>();
+  data.forEach((p: any) => {
+    if (p.subject_code) {
+      if (!map.has(p.subject_code) || (!map.get(p.subject_code) && p.subject_name)) {
+        map.set(p.subject_code, p.subject_name || p.subject_code);
+      }
+    }
+  });
+
+  return Array.from(map.entries()).map(([code, name]) => ({ subject_code: code, subject_name: name }));
 }
 
 // Analytics computed client-side from raw data

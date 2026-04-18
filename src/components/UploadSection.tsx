@@ -12,7 +12,13 @@ export default function UploadSection({ onUploadSuccess }: { onUploadSuccess: ()
   const [isUploading, setIsUploading] = useState(false);
   const [uploadDone, setUploadDone] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<UploadFile[]>([]);
-  const { role, subjectCode } = useAppContext();
+  
+  // New state variables for explicit upload details
+  const [uploadSubjectCode, setUploadSubjectCode] = useState('');
+  const [uploadPaperType, setUploadPaperType] = useState('semester');
+  const [uploadExamYear, setUploadExamYear] = useState(new Date().getFullYear().toString());
+
+  const { role } = useAppContext();
 
   const onDrop = useCallback((accepted: File[]) => {
     const mapped = accepted.map(f => ({
@@ -31,12 +37,17 @@ export default function UploadSection({ onUploadSuccess }: { onUploadSuccess: ()
 
   const handleUpload = async () => {
     if (!pendingFiles.length || isUploading) return;
+    if (!uploadSubjectCode.trim()) {
+      toast.error('Please specify a Subject Code for the database');
+      return;
+    }
+    
     setIsUploading(true);
     const formData = new FormData();
     pendingFiles.forEach(pf => formData.append('files', pf.file));
-    formData.append('subject_code', subjectCode);
-    formData.append('exam_year', new Date().getFullYear().toString());
-    formData.append('paper_type', 'semester');
+    formData.append('subject_code', uploadSubjectCode.trim().toUpperCase());
+    formData.append('exam_year', uploadExamYear);
+    formData.append('paper_type', uploadPaperType);
     formData.append('role', role || 'student');
 
     try {
@@ -89,17 +100,57 @@ export default function UploadSection({ onUploadSuccess }: { onUploadSuccess: ()
 
         {/* Pending files list */}
         {pendingFiles.length > 0 && (
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {pendingFiles.map((pf, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--ink-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px' }}>
-                <FileText size={14} color="var(--gold)" />
-                <span style={{ flex: 1, fontSize: 12, color: 'var(--text-1)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pf.name}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{pf.size}</span>
-                <button onClick={() => setPendingFiles(f => f.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 2, display: 'flex' }}>
-                  <X size={12} />
-                </button>
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {pendingFiles.map((pf, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--ink-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px' }}>
+                  <FileText size={14} color="var(--gold)" />
+                  <span style={{ flex: 1, fontSize: 12, color: 'var(--text-1)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pf.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{pf.size}</span>
+                  <button onClick={() => setPendingFiles(f => f.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 2, display: 'flex' }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Manual Metadata Form */}
+            <div style={{ background: 'var(--ink-3)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>SUBJECT CODE *</label>
+                <input 
+                  type="text" 
+                  value={uploadSubjectCode}
+                  onChange={(e) => setUploadSubjectCode(e.target.value)}
+                  placeholder="e.g. 21CS62"
+                  style={{ width: '100%', background: 'var(--ink-4)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text-1)', fontSize: 13, outline: 'none' }}
+                />
               </div>
-            ))}
+              
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>PAPER TYPE</label>
+                <select 
+                  value={uploadPaperType}
+                  onChange={(e) => setUploadPaperType(e.target.value)}
+                  style={{ width: '100%', background: 'var(--ink-4)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text-1)', fontSize: 13, outline: 'none' }}
+                >
+                  <option value="semester">Semester Exam</option>
+                  <option value="internal">Internal Assessment</option>
+                  <option value="assignment">Assignment</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>EXAM YEAR</label>
+                <input 
+                  type="number" 
+                  value={uploadExamYear}
+                  onChange={(e) => setUploadExamYear(e.target.value)}
+                  style={{ width: '100%', background: 'var(--ink-4)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text-1)', fontSize: 13, outline: 'none' }}
+                />
+              </div>
+            </div>
+
             <button
               onClick={handleUpload}
               disabled={isUploading}
