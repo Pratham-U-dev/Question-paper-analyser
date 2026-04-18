@@ -15,8 +15,18 @@ export default function UploadSection({ onUploadSuccess }: { onUploadSuccess: ()
   
   // New state variables for explicit upload details
   const [uploadSubjectCode, setUploadSubjectCode] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [uploadPaperType, setUploadPaperType] = useState('semester');
   const [uploadExamYear, setUploadExamYear] = useState(new Date().getFullYear().toString());
+
+  const SUGGESTED_SUBJECTS = [
+    { code: '22AIM61', name: 'Digital Image Processing (Integrated)' },
+    { code: '22AIM62', name: 'Advanced AI and ML (Integrated)' },
+    { code: '22AIM63', name: 'Natural Language Processing' },
+    { code: '22AIM641', name: 'Robotic Process Automation' },
+    { code: '22AIM642', name: 'Blockchain Technology' },
+    { code: '22CIV67', name: 'Environmental Studies' },
+  ];
 
   const { role } = useAppContext();
 
@@ -116,15 +126,46 @@ export default function UploadSection({ onUploadSuccess }: { onUploadSuccess: ()
 
             {/* Manual Metadata Form */}
             <div style={{ background: 'var(--ink-3)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ gridColumn: '1 / -1', position: 'relative' }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>SUBJECT CODE *</label>
                 <input 
                   type="text" 
                   value={uploadSubjectCode}
                   onChange={(e) => setUploadSubjectCode(e.target.value)}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   placeholder="e.g. 21CS62"
                   style={{ width: '100%', background: 'var(--ink-4)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text-1)', fontSize: 13, outline: 'none' }}
                 />
+                
+                {/* Suggestions Dropdown (Intellisense) */}
+                {showSuggestions && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--ink-3)', border: '1px solid var(--border)', borderRadius: 6, marginTop: 4, zIndex: 50, maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                    {SUGGESTED_SUBJECTS
+                      .filter(s => s.code.toLowerCase().includes(uploadSubjectCode.toLowerCase()) || s.name.toLowerCase().includes(uploadSubjectCode.toLowerCase()))
+                      .map((s, idx, arr) => (
+                      <div 
+                        key={s.code} 
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // Prevent input from losing focus immediately
+                          setUploadSubjectCode(s.code); 
+                          setShowSuggestions(false); 
+                        }}
+                        style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', cursor: 'pointer', borderBottom: idx === arr.length - 1 ? 'none' : '1px solid var(--border-bright)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--ink-4)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                      >
+                        <span style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600, marginBottom: 2 }}>{s.code}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{s.name}</span>
+                      </div>
+                    ))}
+                    {SUGGESTED_SUBJECTS.filter(s => s.code.toLowerCase().includes(uploadSubjectCode.toLowerCase()) || s.name.toLowerCase().includes(uploadSubjectCode.toLowerCase())).length === 0 && (
+                      <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-3)', fontStyle: 'italic' }}>
+                        Custom code "{uploadSubjectCode}" will be used.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               
               <div>
