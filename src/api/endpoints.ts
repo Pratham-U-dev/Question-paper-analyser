@@ -1,8 +1,8 @@
 import { api } from './axios';
 
-// Remove the hardcoded localhost link from here
+// Upload paper to N8N Vision workflow
 export const uploadPaper = (formData: FormData): Promise<any> => {
-  return api.post('/papers/upload', formData, {
+  return api.post('/e73ea951-993b-4149-9b8e-076a0fd07879', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
