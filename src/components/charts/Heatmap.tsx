@@ -1,69 +1,97 @@
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/src/components/ui/Card';
 
-export default function Heatmap({ data, isLoading }: { data: any, isLoading: boolean }) {
-  if (isLoading || !data) {
+interface HeatmapProps {
+  questions: any[];
+  papers: any[];
+  isLoading: boolean;
+}
+
+export default function Heatmap({ questions, papers, isLoading }: HeatmapProps) {
+  if (isLoading) {
     return (
-      <Card className="col-span-1 lg:col-span-2 h-96 flex flex-col">
-        <CardHeader>
-          <div className="h-6 w-48 bg-white/10 animate-pulse rounded" />
-        </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center">
-          <div className="w-full h-full bg-white/5 animate-pulse rounded-lg" />
-        </CardContent>
-      </Card>
+      <div style={{ background: 'var(--ink-2)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', height: 340 }}>
+        <div className="skeleton" style={{ height: 18, width: 160, marginBottom: 16 }} />
+        <div className="skeleton" style={{ height: '80%', width: '100%' }} />
+      </div>
     );
   }
 
-  const { years, modules, matrix } = data;
-
-  // Find max value for color scaling
-  let maxVal = 0;
-  matrix.forEach((row: number[]) => {
-    row.forEach(val => {
-      if (val > maxVal) maxVal = val;
-    });
+  // Build heatmap: modules (rows) × bloom levels (cols)
+  const modules = [...new Set(questions.map(q => q.module).filter(Boolean))].sort((a, b) => {
+    const na = parseInt(a.replace(/\D/g, '')) || 0;
+    const nb = parseInt(b.replace(/\D/g, '')) || 0;
+    return na - nb;
   });
+  const bloomLevels = [1, 2, 3, 4, 5, 6];
+  const BLOOM_COLORS = ['#63d688', '#38bdf8', '#e8b86d', '#a78bfa', '#f87171', '#fb923c'];
 
-  const getColor = (val: number) => {
-    if (val === 0) return 'bg-slate-800/50';
-    const intensity = Math.max(0.2, val / maxVal);
-    return `bg-blue-500`;
-  };
+  if (modules.length === 0) {
+    return (
+      <div style={{ background: 'var(--ink-2)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', height: 260, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 16 }}>Module × Bloom's Heatmap</div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: 13 }}>No data yet</div>
+      </div>
+    );
+  }
+
+  // Count questions per [module][bloom]
+  const grid: Record<string, Record<number, number>> = {};
+  modules.forEach(m => { grid[m] = {}; bloomLevels.forEach(b => { grid[m][b] = 0; }); });
+  questions.forEach(q => {
+    if (q.module && q.blooms_level) {
+      grid[q.module][q.blooms_level] = (grid[q.module][q.blooms_level] || 0) + 1;
+    }
+  });
+  const maxCount = Math.max(1, ...modules.flatMap(m => bloomLevels.map(b => grid[m][b] || 0)));
 
   return (
-    <Card className="col-span-1 lg:col-span-2 h-96 flex flex-col">
-      <CardHeader>
-        <CardTitle>Repetition Heatmap (Year vs Module)</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-auto">
-        <div className="min-w-max">
-          <div className="flex mb-2">
-            <div className="w-20"></div>
-            {modules.map((m: number) => (
-              <div key={m} className="flex-1 text-center text-sm font-medium text-slate-400">
-                Mod {m}
-              </div>
-            ))}
-          </div>
-          {years.map((year: number, yIdx: number) => (
-            <div key={year} className="flex mb-2 items-center">
-              <div className="w-20 text-sm font-medium text-slate-400">{year}</div>
-              {matrix[yIdx].map((val: number, mIdx: number) => (
-                <div key={`${yIdx}-${mIdx}`} className="flex-1 px-1">
-                  <div
-                    className={`h-12 rounded-md flex items-center justify-center text-white font-medium transition-all hover:scale-105 cursor-pointer ${getColor(val)}`}
-                    style={{ opacity: val === 0 ? 1 : Math.max(0.3, val / maxVal) }}
-                    title={`${val} questions in ${year} for Module ${modules[mIdx]}`}
-                  >
-                    {val > 0 ? val : ''}
-                  </div>
-                </div>
+    <div style={{ background: 'var(--ink-2)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px' }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>Module × Bloom's Heatmap</div>
+      <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 16 }}>Question count by module and cognitive level</div>
+      
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 3 }}>
+          <thead>
+            <tr>
+              <th style={{ fontSize: 10, color: 'var(--text-3)', textAlign: 'left', paddingBottom: 6, fontWeight: 500, width: 80 }}>Module</th>
+              {bloomLevels.map(b => (
+                <th key={b} style={{ fontSize: 10, color: BLOOM_COLORS[b - 1], textAlign: 'center', paddingBottom: 6, fontWeight: 600, width: 40 }}>L{b}</th>
               ))}
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            </tr>
+          </thead>
+          <tbody>
+            {modules.map(m => (
+              <tr key={m}>
+                <td style={{ fontSize: 11, color: 'var(--text-2)', paddingRight: 8, paddingBottom: 3, whiteSpace: 'nowrap' }}>{m}</td>
+                {bloomLevels.map(b => {
+                  const count = grid[m][b] || 0;
+                  const intensity = count / maxCount;
+                  const color = BLOOM_COLORS[b - 1];
+                  return (
+                    <td key={b} style={{ padding: 2 }}>
+                      <div
+                        title={`${m} × L${b}: ${count} questions`}
+                        style={{
+                          width: 36, height: 28, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: count === 0 ? 'var(--ink-3)' : `${color}${Math.round(intensity * 180 + 20).toString(16).padStart(2, '0')}`,
+                          border: count === 0 ? '1px solid var(--border)' : `1px solid ${color}30`,
+                          fontSize: 11, fontWeight: 600, color: count === 0 ? 'var(--text-3)' : '#fff',
+                          cursor: 'default',
+                          transition: 'transform 0.1s',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
+                        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+                      >
+                        {count || '·'}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
