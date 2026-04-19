@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { UploadCloud, FileText, Loader2, CheckCircle2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -7,6 +7,87 @@ import { useAppContext } from '@/src/context/AppContext';
 import toast from 'react-hot-toast';
 
 interface UploadFile { file: File; name: string; size: string; }
+
+function N8nHealth() {
+  const [status, setStatus] = useState<'loading' | 'online' | 'offline'>('loading');
+
+  const checkHealth = async () => {
+    setStatus('loading');
+    try {
+      // Appending a timestamp (cache-buster) forces the browser to actually ping the network
+      // instead of secretly returning a cached '200 OK' without hitting n8n.
+      // Using ngrok-skip-browser-warning to bypass ngrok intermediary pages
+      const res = await fetch(`https://superlocally-unsilvered-efrain.ngrok-free.dev/webhook/health?t=${Date.now()}`, { 
+        method: 'GET',
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setStatus(data.status === 'ok' ? 'online' : 'offline');
+      } else {
+        setStatus('offline');
+      }
+    } catch (err) {
+      setStatus('offline');
+    }
+  };
+
+  useEffect(() => {
+    // Initial check on load
+    checkHealth();
+  }, []);
+
+  const glowColor = status === 'online' ? 'rgba(78,205,196,0.3)' : status === 'offline' ? 'rgba(248,113,113,0.3)' : 'transparent';
+  const borderColor = status === 'online' ? 'rgba(78,205,196,0.5)' : status === 'offline' ? 'rgba(248,113,113,0.5)' : 'var(--border)';
+
+  return (
+    <div 
+      onClick={checkHealth}
+      style={{ 
+      display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, padding: '4px 10px', 
+      borderRadius: 100, background: 'var(--ink-4)', 
+      border: `1px solid ${borderColor}`,
+      boxShadow: `0 0 12px ${glowColor}`,
+      transition: 'all 0.3s',
+      cursor: 'pointer'
+    }}>
+      <span style={{ color: 'var(--text-3)', marginRight: 2 }}>SERVER:</span>
+      {status === 'loading' && (
+        <>
+          <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} color="var(--text-3)" />
+          <span style={{ color: 'var(--text-3)' }}>Checking...</span>
+        </>
+      )}
+      {status === 'online' && (
+        <>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ecdc4', flexShrink: 0, animation: 'pulse-green 2s infinite' }} />
+          <span style={{ color: '#4ecdc4', whiteSpace: 'nowrap' }}>Online</span>
+        </>
+      )}
+      {status === 'offline' && (
+        <>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f87171', flexShrink: 0, animation: 'pulse-red 2s infinite' }} />
+          <span style={{ color: '#f87171', whiteSpace: 'nowrap' }}>Offline</span>
+        </>
+      )}
+      <style>{`
+        @keyframes pulse-green {
+          0% { box-shadow: 0 0 0 0 rgba(78,205,196, 0.7); }
+          70% { box-shadow: 0 0 0 5px rgba(78,205,196, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(78,205,196, 0); }
+        }
+        @keyframes pulse-red {
+          0% { box-shadow: 0 0 0 0 rgba(248,113,113, 0.7); }
+          70% { box-shadow: 0 0 0 5px rgba(248,113,113, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(248,113,113, 0); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function UploadSection({ onUploadSuccess }: { onUploadSuccess: () => void }) {
   const [isUploading, setIsUploading] = useState(false);
@@ -79,6 +160,9 @@ export default function UploadSection({ onUploadSuccess }: { onUploadSuccess: ()
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
           <UploadCloud size={15} color="var(--gold)" />
           Upload Question Paper
+          <div style={{ marginLeft: 'auto' }}>
+            <N8nHealth />
+          </div>
         </div>
 
         {/* Drop zone */}

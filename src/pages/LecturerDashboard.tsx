@@ -130,7 +130,7 @@ export default function LecturerDashboard() {
 
       {/* Paper Generator */}
       <div>
-        <PaperGenerator />
+        <PaperGenerator questions={questions} />
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
