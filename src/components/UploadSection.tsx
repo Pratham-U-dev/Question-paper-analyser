@@ -144,9 +144,17 @@ export default function UploadSection({ onUploadSuccess }: { onUploadSuccess: ()
     try {
       await uploadPaper(formData);
       toast.success('Paper analyzed and stored!');
+      
+      const newSubjectCode = uploadSubjectCode.trim().toUpperCase();
+      // Dispatch a custom event to notify the rest of the application (like the Sidebar)
+      window.dispatchEvent(new CustomEvent('paper-uploaded', {
+        detail: { subjectCode: newSubjectCode }
+      }));
+
       setUploadDone(true);
       setPendingFiles([]);
-      onUploadSuccess();
+      // We removed onUploadSuccess() from here because the event listeners 
+      // above handle safe timeout-based database refetching.
     } catch (err: any) {
       toast.error(err || 'Upload failed. Check N8N webhook is active.');
     } finally {

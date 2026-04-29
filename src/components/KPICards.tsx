@@ -20,7 +20,7 @@ export default function KPICards({ totalPapers, totalQuestions, avgMarks, highRi
   const values: Record<string, number> = { totalPapers, totalQuestions, avgMarks, highRisk };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
       {KPIS.map((kpi, i) => (
         <div
           key={kpi.key}

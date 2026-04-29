@@ -36,7 +36,20 @@ export default function LecturerDashboard() {
     }
   }, [subjectCode]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { 
+    fetchData(); 
+
+    // Listen to our custom event so we force-refresh even if the subjectCode didn't change
+    const onUpload = () => {
+      // Small delay to allow Supabase to fully index the fresh inserts
+      setTimeout(() => {
+        fetchData();
+      }, 1500);
+    };
+
+    window.addEventListener('paper-uploaded', onUpload);
+    return () => window.removeEventListener('paper-uploaded', onUpload);
+  }, [fetchData]);
 
   const analytics = computeAnalytics(papers, questions);
 

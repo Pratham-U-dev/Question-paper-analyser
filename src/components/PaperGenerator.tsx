@@ -25,7 +25,7 @@ const BLOOM_DIM: Record<string, string>   = { L1:'rgba(99,214,136,.12)',L2:'rgba
 const INPUT: React.CSSProperties = { width:'100%',background:'var(--ink-3)',border:'1px solid var(--border)',borderRadius:7,color:'var(--text-1)',fontSize:12,padding:'7px 10px',outline:'none',fontFamily:'var(--font-sans)' };
 const LBL: React.CSSProperties   = { fontSize:11,color:'var(--text-3)',fontWeight:500,display:'block',marginBottom:4 };
 
-function BloomSlider({ level, value, onChange }: { level:string; value:number; onChange:(v:number)=>void }) {
+function BloomSlider({ level, value, onChange }: { level: string; value: number; onChange: (v: number) => void }) {
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
       <div style={{ display:'flex',justifyContent:'space-between' }}>
@@ -247,9 +247,9 @@ export default function PaperGenerator({ questions }: { questions: Question[] })
         </div>
       </div>
 
-      <div style={{ padding:22,display:'grid',gridTemplateColumns:'1fr 1fr',gap:24 }}>
+      <div style={{ padding:22,display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(400px, 1fr))',gap:24 }}>
         {/* ── FORM ── */}
-        <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
+        <div style={{ display:'flex',flexDirection:'column',gap:16,minWidth:0 }}>
           {/* Paper details */}
           <div>
             <div style={{ fontSize:10,color:'var(--text-3)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10 }}>Paper Details</div>

@@ -13,7 +13,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [subjects, setSubjects] = useState<{subject_code: string, subject_name: string}[]>([]);
 
-  useEffect(() => {
+  const loadSubjects = () => {
     fetchUniqueSubjects()
       .then(fetchedSubjects => {
         if (fetchedSubjects.length > 0) {
@@ -25,7 +25,24 @@ export default function Layout() {
         }
       })
       .catch(err => console.error('Failed to load subjects:', err));
-  }, []);
+  };
+
+  useEffect(() => {
+    loadSubjects();
+
+    const handleUpload = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.subjectCode) {
+        setSubjectCode(customEvent.detail.subjectCode);
+      }
+      // Re-fetch subjects to check the database
+      // Adding a small delay to ensure database finishes writing on server
+      setTimeout(() => loadSubjects(), 1000);
+    };
+
+    window.addEventListener('paper-uploaded', handleUpload);
+    return () => window.removeEventListener('paper-uploaded', handleUpload);
+  }, []); // Run only once on mount -> load subjects and attach listener
 
   const handleLogout = () => {
     setRole(null);
@@ -141,7 +158,7 @@ export default function Layout() {
       {mobileOpen && <div className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={() => setMobileOpen(false)} />}
 
       {/* Main */}
-      <main style={{ flex: 1, marginLeft: 0, paddingLeft: 0 }} className="md:ml-60">
+      <main className="flex-1 md:ml-60 min-h-screen flex flex-col" style={{ position: 'relative' }}>
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border)', background: 'var(--ink-2)', position: 'sticky', top: 0, zIndex: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -155,7 +172,7 @@ export default function Layout() {
           </button>
         </header>
 
-        <div style={{ padding: '24px 24px 48px', maxWidth: 1280, margin: '0 auto' }}>
+        <div style={{ padding: 'clamp(1rem, 2.5vw, 2rem)', maxWidth: '1600px', margin: '0 auto', width: '100%', flex: 1 }}>
           <Outlet />
         </div>
       </main>
