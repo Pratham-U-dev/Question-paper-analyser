@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from '@/src/context/AppContext';
 import { Toaster } from 'react-hot-toast';
 import Landing from '@/src/pages/Landing';
