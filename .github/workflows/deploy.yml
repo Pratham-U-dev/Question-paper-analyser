@@ -1,4 +1,5 @@
-name: Deploy React App to GitHub Pages
+# Sample workflow for building and deploying a Vite app to GitHub Pages
+name: Deploy React/Vite app to GitHub Pages
 
 on:
   push:
@@ -12,7 +13,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -25,27 +26,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
           
-      - name: Install dependencies
-        run: npm install
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
         
-      - name: Build project
+      - name: Build App
         run: npm run build
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # This is where Vite outputs the compiled browser-ready code
-          path: ./dist
+          path: './dist'
 
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
