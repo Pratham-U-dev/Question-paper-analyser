@@ -6,9 +6,8 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 async function supabaseFetch(path: string, options?: RequestInit) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error('--- Supabase Auth Error ---');
-    console.error('VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing from environment variables.');
-    throw new Error('Supabase environment variables are missing');
+    console.warn('Supabase not configured. Returning empty data for UI showcase.');
+    return []; // Replaces the crash with empty mock data
   }
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
