@@ -8,7 +8,7 @@ export default defineConfig(({mode}) => {
   
   return {
     // This ensures all built assets use relative paths, fixing the 404 errors
-    base: '/Question-paper-analyser/', 
+    base: './', 
     
     plugins: [react(), tailwindcss()],
     
