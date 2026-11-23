@@ -1,0 +1,226 @@
+{
+  "name": "PBL_Vision-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "You are an expert OCR and data extraction assistant for academic question papers. \nCarefully analyze the provided document and extract all text, tables, and structural elements into a rigidly formatted JSON object.\nUse the exact keys provided in the structure below. Do NOT output any markdown tags (like ```json), give only the raw string.\n\nIf the paper is divided into PART-A and PART-B, utilize the \"part_a\" and \"part_b\" structures. \nIf it is a single table of questions (like an Internal Assessment), utilize the \"questions_table\" structure instead.\n\nStrictly adhere to this JSON structure format:\n{\n  \"institution_header\": [\"string array of top header lines\"],\n  \"exam_details\": {\n    \"examination_name\": \"string\",\n    \"duration\": \"string\",\n    \"course_code\": \"string\",\n    \"maximum_marks\": \"string\",\n    \"subject\": \"string\"\n  },\n  \"instructions\": [\"string array of notes/instructions\"],\n  \"part_a\": {\n    \"heading\": \"string\",\n    \"table_headers\": [\"string array\"],\n    \"questions\": [\n      {\n        \"Q.No.\": \"string\",\n        \"Question\": \"string\",\n        \"BL\": \"string\",\n        \"CO\": \"string\",\n        \"PO\": \"string\",\n        \"Marks\": \"string\"\n      }\n    ]\n  },\n  \"part_b\": {\n    \"heading\": \"string\",\n    \"table_headers\": [\"string array\"],\n    \"modules\": [\n      {\n        \"heading\": \"string value (e.g., Module-1)\",\n        \"rows\": [\n          {\n            \"Q.No.\": \"optional string\",\n            \"sub_question\": \"optional string (e.g., a, b)\",\n            \"Question\": \"optional string\",\n            \"BL\": \"optional string\",\n            \"CO\": \"optional string\",\n            \"PO\": \"optional string\",\n            \"Marks\": \"optional string\",\n            \"separator\": \"optional string (use only if there's an 'OR' separator)\"\n          }\n        ]\n      }\n    ]\n  },\n  \"questions_table\": {\n    \"table_headers\": [\"string array\"],\n    \"questions\": [\n       { \"Q.No.\": \"string\", \"Question\": \"string\", \"BL\": \"string\", \"CO\": \"string\", \"PO\": \"string\", \"Marks\": \"string\" }\n    ]\n  },\n  \"footer_markers\": [\"string array of footer texts like page numbers or codes\"]\n}\n",
+        "inputType": "binary",
+        "binaryPropertyName": "files",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        -144
+      ],
+      "id": "74641f42-9b19-4c00-8771-3b17dce41f99",
+      "name": "Analyze document",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5AInzOYXky4Gmbad",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e73ea951-993b-4149-9b8e-076a0fd07879",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        976,
+        -144
+      ],
+      "id": "0cfe25a4-8a7e-4892-afb8-ac5008dac88f",
+      "name": "Webhook",
+      "webhookId": "e73ea951-993b-4149-9b8e-076a0fd07879"
+    },
+    {
+      "parameters": {
+        "tableId": "papers",
+        "dataToSend": "autoMapInputData"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        -144
+      ],
+      "id": "cabe08dd-e641-47ca-b015-0ddee48b8de3",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $node[\"Webhook\"].json.body; \n\nlet aiText = \"\";\nif (Array.isArray($input.item.json) && $input.item.json[0]?.content) {\n    aiText = $input.item.json[0].content.parts[0].text;\n} else if ($input.item.json.content?.parts) {\n    aiText = $input.item.json.content.parts[0].text;\n} else {\n    aiText = $input.item.json.text || $input.item.json.output || \"\";\n}\n\naiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\nconst parsedResult = JSON.parse(aiText);\n\nreturn {\n  json: {\n    institution_name: parsedResult.institution_header ? parsedResult.institution_header[0] : null,\n    examination_name: parsedResult.exam_details?.examination_name || null,\n    subject_name: parsedResult.exam_details?.subject || null,\n    subject_code: webhookData.subject_code || null,\n    exam_year: parseInt(webhookData.exam_year) || null,\n    paper_type: webhookData.paper_type || null,\n    duration: parsedResult.exam_details?.duration || null,\n    maximum_marks: parseInt(String(parsedResult.exam_details?.maximum_marks).replace(/\\D/g, '')) || null,\n    upload_role: webhookData.role || null\n  }\n};\n// Now this node ONLY outputs database columns! Auto-map will work perfectly.\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        -144
+      ],
+      "id": "da9f7c87-df7c-460a-aa01-d7d4e7299f92",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const paperId = $input.item.json.id; \nconst subjectCode = $node[\"Webhook\"].json.body.subject_code;\n\n// NOTICE the exact lowercase 'd' here to match your setup exactly!\nconst geminiData = $node[\"Analyze document\"].json;\n\nlet aiText = \"\";\nif (Array.isArray(geminiData) && geminiData[0]?.content) {\n    aiText = geminiData[0].content.parts[0].text;\n} else if (geminiData.content?.parts) {\n    aiText = geminiData.content.parts[0].text;\n} else {\n    aiText = geminiData.text || geminiData.output || \"\";\n}\n\naiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\nconst aiData = JSON.parse(aiText);\n\nlet dbQuestions = [];\n\nconst processQuestion = (q, part, moduleTitle) => {\n  if(!q.Question) return;\n  dbQuestions.push({\n    paper_id: paperId,\n    subject_code: subjectCode,\n    part: part,\n    module: moduleTitle || null,\n    q_no: q[\"Q.No.\"] || null,\n    sub_question: q.sub_question || null,\n    question_text: q.Question,\n    blooms_level: parseInt(String(q.BL).replace(/\\D/g, '')) || null,\n    course_outcome: q.CO || null,\n    program_outcome: q.PO || null,\n    marks: parseInt(q.Marks) || null\n  });\n};\n\nif (aiData.questions_table?.questions) {\n  aiData.questions_table.questions.forEach(q => processQuestion(q, 'General', null));\n}\nif (aiData.part_a?.questions) {\n  aiData.part_a.questions.forEach(q => processQuestion(q, 'Part-A', null));\n}\nif (aiData.part_b?.modules) {\n  aiData.part_b.modules.forEach(mod => {\n    mod.rows.forEach(q => processQuestion(q, 'Part-B', mod.heading));\n  });\n}\n\nreturn dbQuestions.map(item => ({ json: item })); \n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        -144
+      ],
+      "id": "46425eb2-568b-4f4a-8fd4-ea6e57b2776e",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "tableId": "questions",
+        "dataToSend": "autoMapInputData"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        -144
+      ],
+      "id": "01dc46e8-4be0-4f96-96ca-a9abb6c9312c",
+      "name": "Create a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## UPLOAD PAPERS"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "5c549f8c-b870-45eb-bcce-a8ad124112af",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2320,
+        -144
+      ],
+      "id": "3db30e35-b095-4b24-a21b-b4fbe1d4402e",
+      "name": "Respond to Webhook5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Analyze document": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Analyze document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Create a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "964a91a3-1ee1-41f1-b699-f214259c5aea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a2d490239a531b7c614b01bab7f239e89ff591dee0a3c266799e6156682e7d13"
+  },
+  "id": "SjJEBvXEEMBCwIvt",
+  "tags": []
+}

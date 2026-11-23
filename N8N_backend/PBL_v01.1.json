@@ -1,0 +1,788 @@
+{
+  "name": "PBL",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemma-3-4b-it",
+          "mode": "list",
+          "cachedResultName": "models/gemma-3-4b-it"
+        },
+        "text": "You are an expert OCR and data extraction assistant for academic question papers. \nCarefully analyze the provided document and extract all text, tables, and structural elements into a rigidly formatted JSON object.\nUse the exact keys provided in the structure below. Do NOT output any markdown tags (like ```json), give only the raw string.\n\nIf the paper is divided into PART-A and PART-B, utilize the \"part_a\" and \"part_b\" structures. \nIf it is a single table of questions (like an Internal Assessment), utilize the \"questions_table\" structure instead.\n\nStrictly adhere to this JSON structure format:\n{\n  \"institution_header\": [\"string array of top header lines\"],\n  \"exam_details\": {\n    \"examination_name\": \"string\",\n    \"duration\": \"string\",\n    \"course_code\": \"string\",\n    \"maximum_marks\": \"string\",\n    \"subject\": \"string\"\n  },\n  \"instructions\": [\"string array of notes/instructions\"],\n  \"part_a\": {\n    \"heading\": \"string\",\n    \"table_headers\": [\"string array\"],\n    \"questions\": [\n      {\n        \"Q.No.\": \"string\",\n        \"Question\": \"string\",\n        \"BL\": \"string\",\n        \"CO\": \"string\",\n        \"PO\": \"string\",\n        \"Marks\": \"string\"\n      }\n    ]\n  },\n  \"part_b\": {\n    \"heading\": \"string\",\n    \"table_headers\": [\"string array\"],\n    \"modules\": [\n      {\n        \"heading\": \"string value (e.g., Module-1)\",\n        \"rows\": [\n          {\n            \"Q.No.\": \"optional string\",\n            \"sub_question\": \"optional string (e.g., a, b)\",\n            \"Question\": \"optional string\",\n            \"BL\": \"optional string\",\n            \"CO\": \"optional string\",\n            \"PO\": \"optional string\",\n            \"Marks\": \"optional string\",\n            \"separator\": \"optional string (use only if there's an 'OR' separator)\"\n          }\n        ]\n      }\n    ]\n  },\n  \"questions_table\": {\n    \"table_headers\": [\"string array\"],\n    \"questions\": [\n       { \"Q.No.\": \"string\", \"Question\": \"string\", \"BL\": \"string\", \"CO\": \"string\", \"PO\": \"string\", \"Marks\": \"string\" }\n    ]\n  },\n  \"footer_markers\": [\"string array of footer texts like page numbers or codes\"]\n}\n",
+        "inputType": "binary",
+        "binaryPropertyName": "files",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        -144
+      ],
+      "id": "6f225424-c430-481d-bef3-49747a000229",
+      "name": "Analyze document",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5AInzOYXky4Gmbad",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "papers/upload",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        976,
+        -144
+      ],
+      "id": "238d3394-1e47-4b40-b230-fa6b073465f7",
+      "name": "Webhook",
+      "webhookId": "95e4da3e-3f64-4db1-85c1-221ed0786eb0"
+    },
+    {
+      "parameters": {
+        "tableId": "papers",
+        "dataToSend": "autoMapInputData"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        -144
+      ],
+      "id": "1a8c9649-fac3-4e82-b97b-b6d12e792da9",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $node[\"Webhook\"].json.body; \n\nlet aiText = \"\";\nif (Array.isArray($input.item.json) && $input.item.json[0]?.content) {\n    aiText = $input.item.json[0].content.parts[0].text;\n} else if ($input.item.json.content?.parts) {\n    aiText = $input.item.json.content.parts[0].text;\n} else {\n    aiText = $input.item.json.text || $input.item.json.output || \"\";\n}\n\naiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\nconst parsedResult = JSON.parse(aiText);\n\nreturn {\n  json: {\n    institution_name: parsedResult.institution_header ? parsedResult.institution_header[0] : null,\n    examination_name: parsedResult.exam_details?.examination_name || null,\n    subject_name: parsedResult.exam_details?.subject || null,\n    subject_code: webhookData.subject_code || null,\n    exam_year: parseInt(webhookData.exam_year) || null,\n    paper_type: webhookData.paper_type || null,\n    duration: parsedResult.exam_details?.duration || null,\n    maximum_marks: parseInt(String(parsedResult.exam_details?.maximum_marks).replace(/\\D/g, '')) || null,\n    upload_role: webhookData.role || null\n  }\n};\n// Now this node ONLY outputs database columns! Auto-map will work perfectly.\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        -144
+      ],
+      "id": "78958295-ff53-4544-99ac-786598e8ed2b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const paperId = $input.item.json.id; \nconst subjectCode = $node[\"Webhook\"].json.body.subject_code;\n\n// NOTICE the exact lowercase 'd' here to match your setup exactly!\nconst geminiData = $node[\"Analyze document\"].json;\n\nlet aiText = \"\";\nif (Array.isArray(geminiData) && geminiData[0]?.content) {\n    aiText = geminiData[0].content.parts[0].text;\n} else if (geminiData.content?.parts) {\n    aiText = geminiData.content.parts[0].text;\n} else {\n    aiText = geminiData.text || geminiData.output || \"\";\n}\n\naiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\nconst aiData = JSON.parse(aiText);\n\nlet dbQuestions = [];\n\nconst processQuestion = (q, part, moduleTitle) => {\n  if(!q.Question) return;\n  dbQuestions.push({\n    paper_id: paperId,\n    subject_code: subjectCode,\n    part: part,\n    module: moduleTitle || null,\n    q_no: q[\"Q.No.\"] || null,\n    sub_question: q.sub_question || null,\n    question_text: q.Question,\n    blooms_level: parseInt(String(q.BL).replace(/\\D/g, '')) || null,\n    course_outcome: q.CO || null,\n    program_outcome: q.PO || null,\n    marks: parseInt(q.Marks) || null\n  });\n};\n\nif (aiData.questions_table?.questions) {\n  aiData.questions_table.questions.forEach(q => processQuestion(q, 'General', null));\n}\nif (aiData.part_a?.questions) {\n  aiData.part_a.questions.forEach(q => processQuestion(q, 'Part-A', null));\n}\nif (aiData.part_b?.modules) {\n  aiData.part_b.modules.forEach(mod => {\n    mod.rows.forEach(q => processQuestion(q, 'Part-B', mod.heading));\n  });\n}\n\nreturn dbQuestions.map(item => ({ json: item })); \n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        -144
+      ],
+      "id": "6545ee93-6f0c-4eac-9bca-e0c3d0a9d295",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "tableId": "questions",
+        "dataToSend": "autoMapInputData"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        -144
+      ],
+      "id": "93f8df93-16f0-4d11-b68f-0aa516bd4d40",
+      "name": "Create a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "subjects",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1056,
+        144
+      ],
+      "id": "6c6af54b-2e6f-46ed-adb8-865de7982467",
+      "name": "Webhook1",
+      "webhookId": "fd3c1371-2034-4b46-9884-e3bb18fa5410"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "papers",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        144
+      ],
+      "id": "4ed739a7-24c6-463b-b80c-546ddb872d9c",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filters out duplicate subjects so the dropdown is clean\nconst uniqueSubjects = [...new Set($input.all().map(item => item.json.subject_code).filter(Boolean))];\nreturn uniqueSubjects.map(code => ({ json: { subject_code: code } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        144
+      ],
+      "id": "a35cd286-359c-4841-8562-2a5502ea0dbf",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1680,
+        144
+      ],
+      "id": "c81e2943-dc89-454c-979d-4c27bb349d0d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "path": "analytics/summary",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1104,
+        416
+      ],
+      "id": "53cccc79-df56-44af-9c7c-648879f59aae",
+      "name": "Webhook2",
+      "webhookId": "24f3b5a9-7f38-4efc-ac01-932c55628dbb"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "papers",
+        "filterType": "string",
+        "filterString": "=subject_code = {{ $node[\"Webhook2\"].json.query.subject_code }}"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        416
+      ],
+      "id": "740c5e3e-db71-4546-829c-6c9dfb5786c9",
+      "name": "Supabase Papers",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const questions = $node[\"Supabase Questions\"].all().map(i => i.json);\nconst papers = $node[\"Supabase Papers\"].all().map(i => i.json);\n\nconst avgMarks = questions.length ? questions.reduce((sum, q) => sum + (q.marks || 0), 0) / questions.length : 0;\n\nreturn { \n  json: {\n    total_papers: papers.length,\n    total_questions: questions.length,\n    avg_marks: Math.round(avgMarks * 100) / 100\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        416
+      ],
+      "id": "56e7ac3f-5f48-4718-923d-2e5d2a9f27ba",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1936,
+        416
+      ],
+      "id": "50e33a8e-f020-4616-bd1e-6b031e233b72",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "path": "analytics/frequency",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1088,
+        704
+      ],
+      "id": "73cc073c-299f-4338-b3dd-4ed500726290",
+      "name": "Webhook3",
+      "webhookId": "d2cfff54-7918-4873-ba9e-18ec768db98b"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "questions",
+        "filterType": "string",
+        "filterString": "=subject_code"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        704
+      ],
+      "id": "b4b27d4d-a451-4d17-88b3-b890d70fc3ce",
+      "name": "Get many rows1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const counts = {};\n$input.all().forEach(item => {\n  const mod = item.json.module;\n  if (mod) counts[mod] = (counts[mod] || 0) + 1;\n});\n\n// Convert to array and sort by highest frequency\nconst result = Object.keys(counts)\n  .map(key => ({ topic: key, frequency: counts[key] }))\n  .sort((a,b) => b.frequency - a.frequency)\n  .map(item => ({ json: item }));\n  \nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        704
+      ],
+      "id": "e014a9c1-c527-4d14-b43c-8db5aaa0a2b6",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1680,
+        704
+      ],
+      "id": "d7669774-a6f5-47f9-9a55-2f70c0e4d920",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "content": "## UPLOAD PAPERS"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "6d63c504-7330-4ff1-94bb-a31c6a26f8eb",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Subject Dropdown List"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "f78cc0c5-d686-42eb-88d7-98bce2764d0b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Analytics Summary Hero"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        432
+      ],
+      "typeVersion": 1,
+      "id": "6c652b13-ceba-43a5-99c9-fb7557687b5f",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Analytics Frequency Chart"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        576,
+        688
+      ],
+      "typeVersion": 1,
+      "id": "a564ffcd-2aae-402b-b8c3-0fe3d5f4cb26",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "questions",
+        "filterType": "string",
+        "filterString": "=subject_code = {{ $node[\"Webhook2\"].json.query.subject_code }}"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        416
+      ],
+      "id": "796e060b-bab8-4e83-9e89-739a8fcf4181",
+      "name": "Supabase Questions",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Bloom's Taxonomy Distribution"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        592,
+        1008
+      ],
+      "typeVersion": 1,
+      "id": "6a1759a4-627d-4acc-8ad0-32925d733663",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "path": "analytics/blooms",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1088,
+        1024
+      ],
+      "id": "7d32a3be-77be-4ebc-b5ab-65fd05ac5478",
+      "name": "Webhook4",
+      "webhookId": "fa770427-35c3-43c0-9b34-dcd489beb50d"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "questions",
+        "filterType": "string",
+        "filterString": "subject_code"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        1024
+      ],
+      "id": "4c8cfbc8-e552-4bcc-901c-a6050440b59a",
+      "name": "Get many rows2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const counts = {};\n$input.all().forEach(item => {\n  const bl = item.json.blooms_level;\n  if (bl) counts[bl] = (counts[bl] || 0) + 1;\n});\n\nreturn Object.keys(counts).map(level => ({ \n  json: { blooms_level: level, count: counts[level] } \n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        1024
+      ],
+      "id": "2cd77cf7-46e3-4d13-ba90-36a497527585",
+      "name": "Code in JavaScript5"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1696,
+        1024
+      ],
+      "id": "f39ab576-8556-4dfc-bc02-c14a3c76a22f",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "content": "## Question Bank Fetch"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        608,
+        1296
+      ],
+      "typeVersion": 1,
+      "id": "1f470536-bc27-4a96-b3ec-28b515058758",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "path": "questions",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1072,
+        1344
+      ],
+      "id": "b3ded6ca-ee2a-421b-8fb0-d3433afbd137",
+      "name": "Webhook5",
+      "webhookId": "3bc3807e-bc4e-42c2-b4a3-97a97b2d39de"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "questions",
+        "filterType": "string",
+        "filterString": "=subject_code = {{ $node[\"Webhook5\"].json.query.subject_code }}"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        1344
+      ],
+      "id": "6e93e13e-652d-4d08-8f2b-873b4d6a900c",
+      "name": "Get many rows3",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OY01kl9tv8u9xOKv",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1488,
+        1344
+      ],
+      "id": "5fa5ece3-18ff-4b62-8a41-f175788b296d",
+      "name": "Respond to Webhook4"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2320,
+        -144
+      ],
+      "id": "59b11f55-8beb-4393-9d78-685bb132445f",
+      "name": "Respond to Webhook5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Analyze document": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Analyze document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Create a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook2": {
+      "main": [
+        [
+          {
+            "node": "Supabase Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Papers": {
+      "main": [
+        [
+          {
+            "node": "Supabase Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook3": {
+      "main": [
+        [
+          {
+            "node": "Get many rows1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Questions": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook4": {
+      "main": [
+        [
+          {
+            "node": "Get many rows2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook5": {
+      "main": [
+        [
+          {
+            "node": "Get many rows3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "de2a72c5-2ae9-440b-a913-1876445b198a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a2d490239a531b7c614b01bab7f239e89ff591dee0a3c266799e6156682e7d13"
+  },
+  "id": "PisldPVBPlwaIDFL",
+  "tags": []
+}
